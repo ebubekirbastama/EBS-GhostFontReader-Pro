@@ -39,6 +39,11 @@
   let history = [];
   let timer = null;
   let frameNo = 0;
+  let locked = false;
+  let bestImage = null;
+  let bestScore = 0;
+  let startTime = Date.now();
+  const LOCK_TIME = 1;
 
   function waitForCanvas() {
     sourceCanvas = document.querySelector(SOURCE_SELECTOR);
@@ -115,7 +120,7 @@
           <option value="difference">Kare Farkı</option>
         </select>
         <label>Üst
-          <input data-action="top" type="range" min="0" max="45" value="20">
+          <input data-action="top" type="range" min="0" max="45" value="0">
         </label>
         <label>Alt
           <input data-action="bottom" type="range" min="55" max="100" value="80">
@@ -164,6 +169,10 @@
   }
 
   function resetAnalysis() {
+  locked = false;
+bestImage = null;
+bestScore = 0;
+startTime = Date.now();
     previous = null;
     previousAligned = null;
     cumulativeY = 0;
@@ -292,6 +301,8 @@
   }
 
   function processFrame() {
+   if (locked) return;
+  
     if (!running || !sourceCanvas || !document.contains(sourceCanvas)) return;
 
     try {
@@ -337,6 +348,38 @@
       }
 
       render(display);
+	  // En net kareyi yakala
+let score = 0;
+
+for (let i = 0; i < display.length; i += 20) {
+    score += display[i];
+}
+
+
+if (score > bestScore) {
+    bestScore = score;
+
+    bestImage = outputCtx.getImageData(
+        0,
+        0,
+        ANALYSIS_W,
+        ANALYSIS_H
+    );
+}
+
+
+// Süre dolunca kilitle
+if (Date.now() - startTime > LOCK_TIME) {
+
+    if (bestImage) {
+        outputCtx.putImageData(bestImage,0,0);
+    }
+
+    locked = true;
+
+    statusEl.textContent =
+    "Yazı yakalandı ve sabitlendi";
+}
       previous = current;
       previousAligned = aligned;
       frameNo++;
